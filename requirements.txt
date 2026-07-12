@@ -1,3 +1,2 @@
-streamlit==1.35.0
-firebase-admin==6.5.0
-watchdog==4.0.1
+streamlit
+firebase-admin

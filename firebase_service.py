@@ -1,13 +1,28 @@
 import hashlib
+import streamlit as st
 from firebase_admin import credentials, firestore, initialize_app, _apps
 
 
 class FirebaseService:
     def __init__(self, ruta_credenciales='credenciales_firebase.json'):
-        """Inicializa la conexión con Firestore usando el archivo local de credenciales"""
+        """Inicializa la conexión de forma híbrida (Local o Cloud)"""
         if not _apps:
-            cred = credentials.Certificate(ruta_credenciales)
-            initialize_app(cred)
+            # 1. Forzar una estructura donde si falla el archivo, salte SI O SI a los secrets
+            try:
+                # Esto funcionará en tu casa (Local)
+                cred = credentials.Certificate(ruta_credenciales)
+                initialize_app(cred)
+            except Exception as e:
+                # Esto se ejecutará en la nube (Streamlit Cloud)
+                try:
+                    cred_dict = dict(st.secrets["gcp_service_account"])
+                    cred = credentials.Certificate(cred_dict)
+                    initialize_app(cred)
+                except Exception as secret_error:
+                    raise RuntimeError(
+                        f"Error en la nube: Verifica que pegaste bien los Secrets en Streamlit. Detalle: {secret_error}"
+                    )
+
         self.db = firestore.client()
         self.coleccion = 'ofertas_tech'
 

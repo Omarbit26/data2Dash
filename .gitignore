@@ -1,0 +1,9 @@
+# Ocultar credenciales privadas de Google
+credenciales_firebase.json
+
+# Ocultar archivos temporales de Python
+__pycache__/
+.streamlit/
+.idea/
+venv/
+credenciales_firebase.json

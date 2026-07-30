@@ -27,7 +27,7 @@ except Exception as e:
 # Crear Pestañas en la UI
 tab_ingesta, tab_chat = st.tabs(["📥 Ingesta de Datos", "🤖 Chat con IA"])
 
-# --- PESTAÑA 1: INGESTA (TU CÓDIGO ORIGINAL) ---
+# --- PESTAÑA 1: INGESTA ---
 with tab_ingesta:
     json_input = st.text_area(
         "Pega aquí el JSON de ChatGPT:",
@@ -45,8 +45,9 @@ with tab_ingesta:
                     st.error("❌ El formato debe ser una lista JSON (comenzar con '[' y terminar con ']')")
                     st.stop()
 
-                cantidad_subida, lista_logs = db_service.cargar_lote_ofertas(lote_datos)
-                st.success(f"🎉 ¡Proceso Terminado! Se cargaron/actualizaron {cantidad_subida} ofertas.")
+                # PASAMOS ai_service PARA QUE CALCULE LOS EMBEDDINGS AL INSERTAR
+                cantidad_subida, lista_logs = db_service.cargar_lote_ofertas(lote_datos, ai_service=ai_service)
+                st.success(f"🎉 ¡Proceso Terminado! Se cargaron/actualizaron {cantidad_subida} ofertas con sus vectores.")
 
                 with st.expander("Ver detalle del proceso"):
                     for log in lista_logs:

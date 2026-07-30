@@ -1,57 +1,75 @@
 import streamlit as st
 import json
 from firebase_service import FirebaseService
+from ai_service import AIService
 
-# Configuración de la ventana del navegador
-st.set_page_config(page_title="Pipeline Ingesta", layout="centered")
+# Configuración de la página
+st.set_page_config(page_title="Pipeline Ingesta & IA", layout="centered")
 
-st.title("💼 Pipeline Ingesta de Empleos")
-st.subheader("Carga MVP - Local a Cloud Firestore")
+st.title("💼 Pipeline de Empleos Tech")
+st.subheader("Carga y Análisis con IA")
 
 
-# Inicializar nuestro servicio de base de datos de forma segura
+# Inicializar servicios
 @st.cache_resource
-def iniciar_servicio():
-    return FirebaseService()
+def iniciar_servicios():
+    db_service = FirebaseService()
+    ai_service = AIService(db_service)
+    return db_service, ai_service
 
 
 try:
-    db_service = iniciar_servicio()
+    db_service, ai_service = iniciar_servicios()
 except Exception as e:
-    st.error(f"Error de conexión con Firestore: {e}")
+    st.error(f"Error de inicialización: {e}")
     st.stop()
 
-# Caja de texto gigante para pegar el JSON
-json_input = st.text_area(
-    "Pega aquí el JSON de ChatGPT:",
-    height=250,
-    placeholder="[\n  {\n    \"empresa\": \"Globant\",\n    ...\n  }\n]"
-)
+# Crear Pestañas en la UI
+tab_ingesta, tab_chat = st.tabs(["📥 Ingesta de Datos", "🤖 Chat con IA"])
 
-# Botón de acción
-if st.button("Enviar Batch a Firebase", type="primary"):
-    if not json_input.strip():
-        st.warning("⚠️ El cuadro de texto está vacío.")
-    else:
-        try:
-            # 1. Validar que el texto sea un JSON real y una lista
-            lote_datos = json.loads(json_input)
-            if not isinstance(lote_datos, list):
-                st.error("❌ El formato debe ser una lista JSON (comenzar con '[' y terminar con ']')")
-                st.stop()
+# --- PESTAÑA 1: INGESTA (TU CÓDIGO ORIGINAL) ---
+with tab_ingesta:
+    json_input = st.text_area(
+        "Pega aquí el JSON de ChatGPT:",
+        height=250,
+        placeholder="[\n  {\n    \"empresa\": \"Globant\",\n    ...\n  }\n]"
+    )
 
-            # 2. Ejecutar la carga a través del servicio
-            cantidad_subida, lista_logs = db_service.cargar_lote_ofertas(lote_datos)
+    if st.button("Enviar Batch a Firebase", type="primary"):
+        if not json_input.strip():
+            st.warning("⚠️ El cuadro de texto está vacío.")
+        else:
+            try:
+                lote_datos = json.loads(json_input)
+                if not isinstance(lote_datos, list):
+                    st.error("❌ El formato debe ser una lista JSON (comenzar con '[' y terminar con ']')")
+                    st.stop()
 
-            # 3. Mostrar resumen de éxito
-            st.success(f"🎉 ¡Proceso Terminado! Se cargaron/actualizaron {cantidad_subida} ofertas.")
+                cantidad_subida, lista_logs = db_service.cargar_lote_ofertas(lote_datos)
+                st.success(f"🎉 ¡Proceso Terminado! Se cargaron/actualizaron {cantidad_subida} ofertas.")
 
-            # Desplegar el visor de logs por si quieres auditar la carga
-            with st.expander("Ver detalle del proceso"):
-                for log in lista_logs:
-                    st.write(log)
+                with st.expander("Ver detalle del proceso"):
+                    for log in lista_logs:
+                        st.write(log)
 
-        except json.JSONDecodeError:
-            st.error("❌ Error de sintaxis: El texto ingresado no es un JSON válido. Revisa comillas o llaves.")
-        except Exception as e:
-            st.error(f"❌ Error crítico: {e}")
+            except json.JSONDecodeError:
+                st.error("❌ Error de sintaxis: El texto ingresado no es un JSON válido. Revisa comillas o llaves.")
+            except Exception as e:
+                st.error(f"❌ Error crítico: {e}")
+
+# --- PESTAÑA 2: CHAT CON IA ---
+with tab_chat:
+    st.markdown("### Pregúntale a tu Base de Datos de Empleos")
+    pregunta = st.text_input("Ejemplo: ¿Qué empresas buscan Data Engineers y qué salario ofrecen?")
+
+    if st.button("Consultar a Gemini"):
+        if not pregunta.strip():
+            st.warning("Por favor escribe una pregunta.")
+        else:
+            with st.spinner("Gemini analizando ofertas en Firestore..."):
+                try:
+                    respuesta = ai_service.responder_pregunta(pregunta)
+                    st.markdown("### Respuesta:")
+                    st.write(respuesta)
+                except Exception as e:
+                    st.error(f"Error al consultar la IA: {e}")
